@@ -22,9 +22,13 @@ fn main() -> () {
     };
     event_queue.roundtrip(&mut app_data).unwrap();
 
-    if app_data.lock_mgr.is_none() {
-        panic!("Unable to get lock manager!");
-    }
+    if app_data.compositor.is_none()
+        || app_data.seat.is_none()
+            || app_data.subcompositor.is_none()
+            || app_data.shm.is_none()
+            || app_data.lock_mgr.is_none() {
+                panic!("Required protocols missing!");
+            }
 
     let lock = app_data.lock_mgr.as_ref().unwrap().lock(&qh, ());
     event_queue.roundtrip(&mut app_data).unwrap();
