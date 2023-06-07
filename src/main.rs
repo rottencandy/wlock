@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm}, Connection, Dispatch, QueueHandle};
+use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm, wl_seat, wl_keyboard, wl_pointer}, Connection, Dispatch, QueueHandle, WEnum};
 use wayland_protocols::ext::session_lock::v1::client::{ext_session_lock_manager_v1, ext_session_lock_v1};
 
 fn main() -> () {
@@ -16,6 +16,9 @@ fn main() -> () {
     let mut app_data = AppData {
         locked: false,
         compositor: None,
+        seat: None,
+        seat_ptr: None,
+        seat_kb: None,
         subcompositor: None,
         shm: None,
         lock_mgr: None,
@@ -44,6 +47,9 @@ fn main() -> () {
 struct AppData {
     locked: bool,
     compositor: Option<wl_compositor::WlCompositor>,
+    seat: Option<wl_seat::WlSeat>,
+    seat_ptr: Option<wl_pointer::WlPointer>,
+    seat_kb: Option<wl_keyboard::WlKeyboard>,
     subcompositor: Option<wl_subcompositor::WlSubcompositor>,
     shm: Option<wl_shm::WlShm>,
     lock_mgr: Option<ext_session_lock_manager_v1::ExtSessionLockManagerV1>,
@@ -64,12 +70,16 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
             ..
         } = event
         {
-            // println!("[{}] {} (v{})", name, interface, version);
+            // println!("[{}] {}", name, interface);
             match &interface[..] {
                 "wl_compositor" => {
                     let compositor =
                         registry.bind::<wl_compositor::WlCompositor, _, _>(name, 4, qh, ());
                     state.compositor = Some(compositor);
+                }
+                "wl_seat" => {
+                    let seat = registry.bind::<wl_seat::WlSeat, _, _>(name, 1, qh, ());
+                    state.seat = Some(seat);
                 }
                 "wl_subcompositor" => {
                     let subcompositor =
@@ -99,7 +109,62 @@ impl Dispatch<wl_compositor::WlCompositor, ()> for AppData {
         _: &Connection,
         _: &QueueHandle<Self>,
         ) {
-        // wl_compositor has no event
+        // no event
+    }
+}
+
+impl Dispatch<wl_seat::WlSeat, ()> for AppData {
+    fn event(
+        state: &mut Self,
+        seat: &wl_seat::WlSeat,
+        event: wl_seat::Event,
+        _: &(),
+        _: &Connection,
+        qh: &QueueHandle<Self>,
+        ) {
+        // no event
+        if let wl_seat::Event::Capabilities {
+            capabilities: WEnum::Value(capabilities),
+            ..
+        } = event {
+            if capabilities.contains(wl_seat::Capability::Keyboard) {
+                state.seat_kb = Some(seat.get_keyboard(qh, ()));
+            }
+            if capabilities.contains(wl_seat::Capability::Pointer) {
+                state.seat_ptr = Some(seat.get_pointer(qh, ()));
+            }
+        }
+    }
+}
+
+impl Dispatch<wl_keyboard::WlKeyboard, ()> for AppData {
+    fn event(
+        _: &mut Self,
+        _: &wl_keyboard::WlKeyboard,
+        event: wl_keyboard::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        if let wl_keyboard::Event::Key { key, .. } = event {
+            if key == 1 {
+                // ESC key
+                // todo
+            }
+        }
+    }
+}
+
+impl Dispatch<wl_pointer::WlPointer, ()> for AppData {
+    fn event(
+        _: &mut Self,
+        _: &wl_pointer::WlPointer,
+        _: wl_pointer::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        // todo
     }
 }
 
@@ -112,7 +177,7 @@ impl Dispatch<wl_subcompositor::WlSubcompositor, ()> for AppData {
         _: &Connection,
         _: &QueueHandle<Self>,
         ) {
-        // wl_compositor has no event
+        // no event
     }
 }
 
@@ -138,7 +203,7 @@ impl Dispatch<ext_session_lock_manager_v1::ExtSessionLockManagerV1, ()> for AppD
         _: &Connection,
         _: &QueueHandle<AppData>,
         ) {
-        // todo
+        // no event
     }
 }
 
