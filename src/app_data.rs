@@ -84,6 +84,19 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
                 }
                 _ => {}
             }
+        } else if let wl_registry::Event::GlobalRemove {
+            name,
+            ..
+        } = event {
+            // todo switch to drain_filter
+            let mut i = 0;
+            while i < state.surfaces.len() {
+                if state.surfaces[i].name == name {
+                    state.surfaces.remove(i);
+                } else {
+                    i += 1;
+                }
+            }
         }
     }
 }
