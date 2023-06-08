@@ -1,4 +1,5 @@
 use wayland_client::Connection;
+use xkbcommon::xkb::Context;
 mod app_data;
 
 fn main() -> () {
@@ -24,6 +25,10 @@ fn main() -> () {
         output: None,
         lock_mgr: None,
         lock_surf: None,
+
+        xkb_context: Context::new(0),
+        xkb_keymap: None,
+        xkb_state: None,
 
         width: 0,
         height: 0,
