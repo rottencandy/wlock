@@ -1,7 +1,5 @@
-use std::{thread, time::Duration};
-
-use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm, wl_seat, wl_keyboard, wl_pointer, wl_output, wl_surface}, Connection, Dispatch, QueueHandle, WEnum};
-use wayland_protocols::ext::session_lock::v1::client::{ext_session_lock_manager_v1, ext_session_lock_v1};
+use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm, wl_seat, wl_keyboard, wl_pointer, wl_output, wl_surface, wl_subsurface}, Connection, Dispatch, QueueHandle, WEnum};
+use wayland_protocols::ext::session_lock::v1::client::{ext_session_lock_manager_v1, ext_session_lock_v1, ext_session_lock_surface_v1};
 
 fn main() -> () {
     let conn = Connection::connect_to_env().unwrap();
@@ -23,7 +21,12 @@ fn main() -> () {
         seat_kb: None,
         subcompositor: None,
         shm: None,
+        output: None,
         lock_mgr: None,
+        lock_surf: None,
+
+        width: 0,
+        height: 0,
     };
     event_queue.roundtrip(&mut app_data).unwrap();
 
@@ -46,6 +49,15 @@ fn main() -> () {
     //println!("Sleeping...");
     //thread::sleep(Duration::from_millis(4000));
 
+    let surface = app_data.compositor.as_ref().unwrap().create_surface(&qh, ());
+    let child = app_data.compositor.as_ref().unwrap().create_surface(&qh, ());
+    let subsurface = app_data.subcompositor.as_ref().unwrap().get_subsurface(&child, &&surface, &qh, ());
+    subsurface.set_sync();
+    let lock_surf = lock.get_lock_surface(&surface, app_data.output.as_ref().unwrap(), &qh, ());
+    app_data.base_surface = Some(surface);
+    app_data.lock_surf = Some(lock_surf);
+    event_queue.roundtrip(&mut app_data).unwrap();
+
     app_data.running = true;
     while app_data.locked {
         event_queue.blocking_dispatch(&mut app_data).unwrap();
@@ -65,7 +77,12 @@ struct AppData {
     seat_kb: Option<wl_keyboard::WlKeyboard>,
     subcompositor: Option<wl_subcompositor::WlSubcompositor>,
     shm: Option<wl_shm::WlShm>,
+    output: Option<wl_output::WlOutput>,
     lock_mgr: Option<ext_session_lock_manager_v1::ExtSessionLockManagerV1>,
+    lock_surf: Option<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1>,
+
+    width: u32,
+    height: u32,
 }
 
 impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
@@ -86,11 +103,8 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
             // println!("[{}] {}", name, interface);
             match &interface[..] {
                 "wl_compositor" => {
-                    let compositor =
-                        registry.bind::<wl_compositor::WlCompositor, _, _>(name, 4, qh, ());
-                    let surface = compositor.create_surface(qh, ());
+                    let compositor = registry.bind::<wl_compositor::WlCompositor, _, _>(name, 4, qh, ());
                     state.compositor = Some(compositor);
-                    state.base_surface = Some(surface);
                 }
                 "wl_seat" => {
                     let seat = registry.bind::<wl_seat::WlSeat, _, _>(name, 1, qh, ());
@@ -106,11 +120,8 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
                     state.shm = Some(shm);
                 }
                 "wl_output" => {
-                    registry.bind::<wl_output::WlOutput, _, _>(name, 1, qh, ());
-                    if state.running {
-                        let surface = state.compositor.as_ref().unwrap().create_surface(qh, ());
-                        state.base_surface = Some(surface);
-                    }
+                    let output = registry.bind::<wl_output::WlOutput, _, _>(name, 1, qh, ());
+                    state.output = Some(output);
                 }
                 "ext_session_lock_manager_v1" => {
                     let lock_mgr = registry.bind::<ext_session_lock_manager_v1::ExtSessionLockManagerV1, _, _>(name, 1, qh, ());
@@ -191,7 +202,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for AppData {
         _: &(),
         _: &Connection,
         _: &QueueHandle<Self>,
-    ) {
+        ) {
         // todo
     }
 }
@@ -248,6 +259,19 @@ impl Dispatch<wl_surface::WlSurface, ()> for AppData {
     }
 }
 
+impl Dispatch<wl_subsurface::WlSubsurface, ()> for AppData {
+    fn event(
+        _: &mut Self,
+        _: &wl_subsurface::WlSubsurface,
+        _: wl_subsurface::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        ) {
+        // todo
+    }
+}
+
 impl Dispatch<ext_session_lock_manager_v1::ExtSessionLockManagerV1, ()> for AppData {
     fn event(
         _: &mut Self,
@@ -280,6 +304,23 @@ impl Dispatch<ext_session_lock_v1::ExtSessionLockV1, ()> for AppData {
 
             }
             _ => {}
+        }
+    }
+}
+
+impl Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, ()> for AppData {
+    fn event(
+        state: &mut Self,
+        lock_surf: &ext_session_lock_surface_v1::ExtSessionLockSurfaceV1,
+        event: ext_session_lock_surface_v1::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<AppData>,
+        ) {
+        if let ext_session_lock_surface_v1::Event::Configure { serial, width, height } = event {
+            state.width = width;
+            state.height = height;
+            lock_surf.ack_configure(serial);
         }
     }
 }
