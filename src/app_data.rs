@@ -93,6 +93,12 @@ impl Dispatch<wl_seat::WlSeat, ()> for AppData {
             capabilities: WEnum::Value(capabilities),
             ..
         } = event {
+            if state.seat_kb.is_some() {
+                state.seat_kb = None;
+            }
+            if state.seat_ptr.is_some() {
+                state.seat_ptr = None;
+            }
             if capabilities.contains(wl_seat::Capability::Keyboard) {
                 state.seat_kb = Some(seat.get_keyboard(qh, ()));
             }
