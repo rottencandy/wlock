@@ -15,6 +15,7 @@ fn main() -> () {
 
     let mut app_data = AppData {
         locked: false,
+        running: false,
         compositor: None,
         base_surface: None,
         seat: None,
@@ -26,13 +27,18 @@ fn main() -> () {
     };
     event_queue.roundtrip(&mut app_data).unwrap();
 
-    if app_data.compositor.is_none()
-        || app_data.seat.is_none()
-            || app_data.subcompositor.is_none()
-            || app_data.shm.is_none()
-            || app_data.lock_mgr.is_none() {
-                panic!("Required protocols missing!");
-            }
+    if app_data.compositor.is_none() {
+        panic!("compositor protocol missing!");
+    }
+    if app_data.seat.is_none() {
+        panic!("seat protocol missing!");
+    }
+    if app_data.shm.is_none() {
+        panic!("shm protocol missing!");
+    }
+    if app_data.lock_mgr.is_none() {
+        panic!("lock_manager protocol missing!");
+    }
 
     let lock = app_data.lock_mgr.as_ref().unwrap().lock(&qh, ());
     event_queue.roundtrip(&mut app_data).unwrap();
@@ -40,18 +46,18 @@ fn main() -> () {
     //println!("Sleeping...");
     //thread::sleep(Duration::from_millis(4000));
 
-    while !app_data.locked {
+    app_data.running = true;
+    while app_data.locked {
         event_queue.blocking_dispatch(&mut app_data).unwrap();
     }
 
-    println!("Attempting unlock.");
     lock.unlock_and_destroy();
     event_queue.roundtrip(&mut app_data).unwrap();
-    println!("Successful!!!");
 }
 
 struct AppData {
     locked: bool,
+    running: bool,
     compositor: Option<wl_compositor::WlCompositor>,
     base_surface: Option<wl_surface::WlSurface>,
     seat: Option<wl_seat::WlSeat>,
@@ -100,7 +106,11 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
                     state.shm = Some(shm);
                 }
                 "wl_output" => {
-                    let _surface = registry.bind::<wl_output::WlOutput, _, _>(name, 1, qh, ());
+                    registry.bind::<wl_output::WlOutput, _, _>(name, 1, qh, ());
+                    if state.running {
+                        let surface = state.compositor.as_ref().unwrap().create_surface(qh, ());
+                        state.base_surface = Some(surface);
+                    }
                 }
                 "ext_session_lock_manager_v1" => {
                     let lock_mgr = registry.bind::<ext_session_lock_manager_v1::ExtSessionLockManagerV1, _, _>(name, 1, qh, ());
