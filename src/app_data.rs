@@ -37,35 +37,36 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
         ) {
         if let wl_registry::Event::Global {
             name,
+            version,
             interface,
             ..
         } = event
         {
-            // println!("[{}] {}", name, interface);
+            //println!("[{}] {} ({})", name, interface, version);
             match &interface[..] {
                 "wl_compositor" => {
-                    let compositor = registry.bind::<wl_compositor::WlCompositor, _, _>(name, 4, qh, ());
+                    let compositor = registry.bind::<wl_compositor::WlCompositor, _, _>(name, version, qh, ());
                     state.compositor = Some(compositor);
                 }
                 "wl_seat" => {
-                    let seat = registry.bind::<wl_seat::WlSeat, _, _>(name, 1, qh, ());
+                    let seat = registry.bind::<wl_seat::WlSeat, _, _>(name, version, qh, ());
                     state.seat = Some(seat);
                 }
                 "wl_subcompositor" => {
                     let subcompositor =
-                        registry.bind::<wl_subcompositor::WlSubcompositor, _, _>(name, 1, qh, ());
+                        registry.bind::<wl_subcompositor::WlSubcompositor, _, _>(name, version, qh, ());
                     state.subcompositor = Some(subcompositor);
                 }
                 "wl_shm" => {
-                    let shm = registry.bind::<wl_shm::WlShm, _, _>(name, 1, qh, ());
+                    let shm = registry.bind::<wl_shm::WlShm, _, _>(name, version, qh, ());
                     state.shm = Some(shm);
                 }
                 "wl_output" => {
-                    let output = registry.bind::<wl_output::WlOutput, _, _>(name, 1, qh, ());
+                    let output = registry.bind::<wl_output::WlOutput, _, _>(name, version, qh, ());
                     state.output = Some(output);
                 }
                 "ext_session_lock_manager_v1" => {
-                    let lock_mgr = registry.bind::<ext_session_lock_manager_v1::ExtSessionLockManagerV1, _, _>(name, 1, qh, ());
+                    let lock_mgr = registry.bind::<ext_session_lock_manager_v1::ExtSessionLockManagerV1, _, _>(name, version, qh, ());
                     state.lock_mgr = Some(lock_mgr);
                 }
                 _ => {}
