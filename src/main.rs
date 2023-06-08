@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm, wl_seat, wl_keyboard, wl_pointer}, Connection, Dispatch, QueueHandle, WEnum};
+use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm, wl_seat, wl_keyboard, wl_pointer, wl_output, wl_surface}, Connection, Dispatch, QueueHandle, WEnum};
 use wayland_protocols::ext::session_lock::v1::client::{ext_session_lock_manager_v1, ext_session_lock_v1};
 
 fn main() -> () {
@@ -16,6 +16,7 @@ fn main() -> () {
     let mut app_data = AppData {
         locked: false,
         compositor: None,
+        base_surface: None,
         seat: None,
         seat_ptr: None,
         seat_kb: None,
@@ -52,6 +53,7 @@ fn main() -> () {
 struct AppData {
     locked: bool,
     compositor: Option<wl_compositor::WlCompositor>,
+    base_surface: Option<wl_surface::WlSurface>,
     seat: Option<wl_seat::WlSeat>,
     seat_ptr: Option<wl_pointer::WlPointer>,
     seat_kb: Option<wl_keyboard::WlKeyboard>,
@@ -80,7 +82,9 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
                 "wl_compositor" => {
                     let compositor =
                         registry.bind::<wl_compositor::WlCompositor, _, _>(name, 4, qh, ());
+                    let surface = compositor.create_surface(qh, ());
                     state.compositor = Some(compositor);
+                    state.base_surface = Some(surface);
                 }
                 "wl_seat" => {
                     let seat = registry.bind::<wl_seat::WlSeat, _, _>(name, 1, qh, ());
@@ -94,6 +98,9 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
                 "wl_shm" => {
                     let shm = registry.bind::<wl_shm::WlShm, _, _>(name, 1, qh, ());
                     state.shm = Some(shm);
+                }
+                "wl_output" => {
+                    let _surface = registry.bind::<wl_output::WlOutput, _, _>(name, 1, qh, ());
                 }
                 "ext_session_lock_manager_v1" => {
                     let lock_mgr = registry.bind::<ext_session_lock_manager_v1::ExtSessionLockManagerV1, _, _>(name, 1, qh, ());
@@ -127,7 +134,6 @@ impl Dispatch<wl_seat::WlSeat, ()> for AppData {
         _: &Connection,
         qh: &QueueHandle<Self>,
         ) {
-        // no event
         if let wl_seat::Event::Capabilities {
             capabilities: WEnum::Value(capabilities),
             ..
@@ -144,7 +150,7 @@ impl Dispatch<wl_seat::WlSeat, ()> for AppData {
 
 impl Dispatch<wl_keyboard::WlKeyboard, ()> for AppData {
     fn event(
-        _: &mut Self,
+        state: &mut Self,
         _: &wl_keyboard::WlKeyboard,
         event: wl_keyboard::Event,
         _: &(),
@@ -195,7 +201,33 @@ impl Dispatch<wl_shm::WlShm, ()> for AppData {
         _: &Connection,
         _: &QueueHandle<Self>,
         ) {
-        // we ignore wl_shm events in this example
+        // no event
+    }
+}
+
+impl Dispatch<wl_output::WlOutput, ()> for AppData {
+    fn event(
+        _: &mut Self,
+        _: &wl_output::WlOutput,
+        _: wl_output::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        ) {
+        // todo
+    }
+}
+
+impl Dispatch<wl_surface::WlSurface, ()> for AppData {
+    fn event(
+        _: &mut Self,
+        _: &wl_surface::WlSurface,
+        _: wl_surface::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        ) {
+        // todo
     }
 }
 
