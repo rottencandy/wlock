@@ -117,7 +117,7 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for AppData {
             println!("Key: {}", key);
             if key == 1 {
                 println!("Esc key pressed!");
-                // ESC key
+                // ESC key?
                 // todo
             }
         }
@@ -237,7 +237,7 @@ impl Dispatch<ext_session_lock_v1::ExtSessionLockV1, ()> for AppData {
             }
             ext_session_lock_v1::Event::Locked => {
                 state.locked = true;
-                println!("Session successfully locked!!");
+                println!("Session successfully locked!");
 
             }
             _ => {}

@@ -46,6 +46,9 @@ fn main() -> () {
     let lock = app_data.lock_mgr.as_ref().unwrap().lock(&qh, ());
     event_queue.roundtrip(&mut app_data).unwrap();
 
+    app_data.running = true;
+    event_queue.flush().unwrap();
+
     //println!("Sleeping...");
     //thread::sleep(Duration::from_millis(4000));
 
@@ -58,11 +61,11 @@ fn main() -> () {
     app_data.lock_surf = Some(lock_surf);
     event_queue.roundtrip(&mut app_data).unwrap();
 
-    app_data.running = true;
     //while app_data.locked {
     //    event_queue.blocking_dispatch(&mut app_data).unwrap();
     //}
 
     lock.unlock_and_destroy();
     event_queue.roundtrip(&mut app_data).unwrap();
+    println!("Successfully unlocked!");
 }
