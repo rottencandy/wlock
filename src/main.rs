@@ -16,15 +16,13 @@ fn main() -> () {
         locked: false,
         running: false,
         compositor: None,
-        base_surface: None,
         seat: None,
         seat_ptr: None,
         seat_kb: None,
         subcompositor: None,
         shm: None,
-        output: None,
+        surfaces: vec![],
         lock_mgr: None,
-        lock_surf: None,
 
         xkb_context: Context::new(0),
         xkb_keymap: None,
@@ -57,13 +55,17 @@ fn main() -> () {
     //println!("Sleeping...");
     //thread::sleep(Duration::from_millis(4000));
 
-    let surface = app_data.compositor.as_ref().unwrap().create_surface(&qh, ());
-    let child = app_data.compositor.as_ref().unwrap().create_surface(&qh, ());
-    let subsurface = app_data.subcompositor.as_ref().unwrap().get_subsurface(&child, &&surface, &qh, ());
-    subsurface.set_sync();
-    let lock_surf = lock.get_lock_surface(&surface, app_data.output.as_ref().unwrap(), &qh, ());
-    app_data.base_surface = Some(surface);
-    app_data.lock_surf = Some(lock_surf);
+    for mut s in &mut app_data.surfaces {
+        let surf = app_data.compositor.as_ref().unwrap().create_surface(&qh, ());
+        let child = app_data.compositor.as_ref().unwrap().create_surface(&qh, ());
+        let subsurface = app_data.subcompositor.as_ref().unwrap().get_subsurface(&child, &surf, &qh, ());
+        subsurface.set_sync();
+        let lock_surf = lock.get_lock_surface(&surf, &s.output, &qh, ());
+        s.surface = Some(surf);
+        s.child = Some(child);
+        s.subsurface = Some(subsurface);
+        s.lock_surface = Some(lock_surf);
+    }
     event_queue.roundtrip(&mut app_data).unwrap();
 
     //while app_data.locked {

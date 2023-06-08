@@ -4,19 +4,26 @@ use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl
 use wayland_protocols::ext::session_lock::v1::client::{ext_session_lock_manager_v1, ext_session_lock_v1, ext_session_lock_surface_v1};
 use xkbcommon::xkb::{Keymap, Context, ffi::{XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS}, State};
 
+pub struct Surface {
+    pub name: u32,
+    pub output: wl_output::WlOutput,
+    pub surface: Option<wl_surface::WlSurface>,
+    pub child: Option<wl_surface::WlSurface>,
+    pub subsurface: Option<wl_subsurface::WlSubsurface>,
+    pub lock_surface: Option<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1>,
+}
+
 pub struct AppData {
     pub locked: bool,
     pub running: bool,
     pub compositor: Option<wl_compositor::WlCompositor>,
-    pub base_surface: Option<wl_surface::WlSurface>,
     pub seat: Option<wl_seat::WlSeat>,
     pub seat_ptr: Option<wl_pointer::WlPointer>,
     pub seat_kb: Option<wl_keyboard::WlKeyboard>,
     pub subcompositor: Option<wl_subcompositor::WlSubcompositor>,
     pub shm: Option<wl_shm::WlShm>,
-    pub output: Option<wl_output::WlOutput>,
+    pub surfaces: Vec<Surface>,
     pub lock_mgr: Option<ext_session_lock_manager_v1::ExtSessionLockManagerV1>,
-    pub lock_surf: Option<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1>,
 
     pub xkb_context: Context,
     pub xkb_keymap: Option<Keymap>,
@@ -40,8 +47,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
             version,
             interface,
             ..
-        } = event
-        {
+        } = event {
             //println!("[{}] {} ({})", name, interface, version);
             match &interface[..] {
                 "wl_compositor" => {
@@ -63,7 +69,14 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
                 }
                 "wl_output" => {
                     let output = registry.bind::<wl_output::WlOutput, _, _>(name, version, qh, ());
-                    state.output = Some(output);
+                    state.surfaces.push(Surface {
+                        output,
+                        name,
+                        surface: None,
+                        child: None,
+                        subsurface: None,
+                        lock_surface: None,
+                    });
                 }
                 "ext_session_lock_manager_v1" => {
                     let lock_mgr = registry.bind::<ext_session_lock_manager_v1::ExtSessionLockManagerV1, _, _>(name, version, qh, ());
