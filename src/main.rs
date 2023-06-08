@@ -36,8 +36,13 @@ fn main() -> () {
     let lock = app_data.lock_mgr.as_ref().unwrap().lock(&qh, ());
     event_queue.roundtrip(&mut app_data).unwrap();
 
-    println!("Sleeping...");
-    thread::sleep(Duration::from_millis(4000));
+    //println!("Sleeping...");
+    //thread::sleep(Duration::from_millis(4000));
+
+    while !app_data.locked {
+        event_queue.blocking_dispatch(&mut app_data).unwrap();
+    }
+
     println!("Attempting unlock.");
     lock.unlock_and_destroy();
     event_queue.roundtrip(&mut app_data).unwrap();
