@@ -163,6 +163,13 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for AppData {
                 // todo
             }
         }
+
+        if let wl_keyboard::Event::Keymap { format, .. } = event {
+            if let WEnum::Value(wl_keyboard::KeymapFormat::XkbV1) = format {
+            } else {
+                panic!("Unknown keymap format!");
+            }
+        }
     }
 }
 
