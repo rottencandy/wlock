@@ -1,4 +1,5 @@
 use wayland_client::Connection;
+use wayland_protocols::ext::session_lock::v1::client::ext_session_lock_v1;
 use xkbcommon::xkb::Context;
 mod app_data;
 
@@ -52,21 +53,11 @@ fn main() -> () {
     app_data.running = true;
     event_queue.flush().unwrap();
 
+    create_susrfaces(&mut app_data, &qh, &lock);
+    event_queue.roundtrip(&mut app_data).unwrap();
+
     //println!("Sleeping...");
     //thread::sleep(Duration::from_millis(4000));
-
-    for mut s in &mut app_data.surfaces {
-        let surf = app_data.compositor.as_ref().unwrap().create_surface(&qh, ());
-        let child = app_data.compositor.as_ref().unwrap().create_surface(&qh, ());
-        let subsurface = app_data.subcompositor.as_ref().unwrap().get_subsurface(&child, &surf, &qh, ());
-        subsurface.set_sync();
-        let lock_surf = lock.get_lock_surface(&surf, &s.output, &qh, ());
-        s.surface = Some(surf);
-        s.child = Some(child);
-        s.subsurface = Some(subsurface);
-        s.lock_surface = Some(lock_surf);
-    }
-    event_queue.roundtrip(&mut app_data).unwrap();
 
     //while app_data.locked {
     //    event_queue.blocking_dispatch(&mut app_data).unwrap();
@@ -75,4 +66,18 @@ fn main() -> () {
     lock.unlock_and_destroy();
     event_queue.roundtrip(&mut app_data).unwrap();
     println!("Successfully unlocked!");
+}
+
+fn create_susrfaces(app_data: &mut app_data::AppData, qh: &wayland_client::QueueHandle<app_data::AppData>, lock: &ext_session_lock_v1::ExtSessionLockV1) {
+    for mut s in &mut app_data.surfaces {
+        let surf = app_data.compositor.as_ref().unwrap().create_surface(qh, ());
+        let child = app_data.compositor.as_ref().unwrap().create_surface(qh, ());
+        let subsurface = app_data.subcompositor.as_ref().unwrap().get_subsurface(&child, &surf, qh, ());
+        subsurface.set_sync();
+        let lock_surf = lock.get_lock_surface(&surf, &s.output, qh, ());
+        s.surface = Some(surf);
+        s.child = Some(child);
+        s.subsurface = Some(subsurface);
+        s.lock_surface = Some(lock_surf);
+    }
 }

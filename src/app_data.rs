@@ -1,8 +1,6 @@
-use std::fs::File;
-
 use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm, wl_seat, wl_keyboard, wl_pointer, wl_output, wl_surface, wl_subsurface}, Connection, Dispatch, QueueHandle, WEnum};
 use wayland_protocols::ext::session_lock::v1::client::{ext_session_lock_manager_v1, ext_session_lock_v1, ext_session_lock_surface_v1};
-use xkbcommon::xkb::{Keymap, Context, ffi::{XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS}, State};
+use xkbcommon::xkb::{Keymap, Context, State};
 
 pub struct Surface {
     pub name: u32,
@@ -162,16 +160,15 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for AppData {
             }
         }
 
-        if let wl_keyboard::Event::Keymap { format, fd, .. } = event {
+        if let wl_keyboard::Event::Keymap { format, .. } = event {
             if let WEnum::Value(wl_keyboard::KeymapFormat::XkbV1) = format {
-                let mut file = File::from(fd);
-                let keymap = Keymap::new_from_file(
-                    &state.xkb_context,
-                    &mut file,
-                    XKB_KEYMAP_FORMAT_TEXT_V1,
-                    XKB_KEYMAP_COMPILE_NO_FLAGS);
-                state.xkb_keymap = keymap;
-                state.xkb_state = Some(State::new(&keymap.unwrap()));
+                //let keymap = Keymap::new_from_file(
+                //    &state.xkb_context,
+                //    &mut File::from(fd),
+                //    XKB_KEYMAP_FORMAT_TEXT_V1,
+                //    XKB_KEYMAP_COMPILE_NO_FLAGS);
+                //state.xkb_state = Some(State::new(&keymap.as_ref().unwrap()));
+                //state.xkb_keymap = keymap;
             } else {
                 panic!("Unknown keymap format!");
             }
