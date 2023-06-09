@@ -1,6 +1,7 @@
 use wayland_client::Connection;
 use wayland_protocols::ext::session_lock::v1::client::ext_session_lock_v1;
 mod app_data;
+pub mod egl;
 
 fn main() -> () {
     let conn = Connection::connect_to_env().unwrap();
