@@ -37,7 +37,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
         registry: &wl_registry::WlRegistry,
         event: wl_registry::Event,
         _: &(),
-        _: &Connection,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         ) {
         if let wl_registry::Event::Global {
@@ -75,6 +75,9 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
                         subsurface: None,
                         lock_surface: None,
                     });
+                    if state.running {
+                        conn.roundtrip().unwrap();
+                    }
                 }
                 "ext_session_lock_manager_v1" => {
                     let lock_mgr = registry.bind::<ext_session_lock_manager_v1::ExtSessionLockManagerV1, _, _>(name, version, qh, ());
@@ -86,14 +89,17 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
             name,
             ..
         } = event {
-            // todo switch to drain_filter
+            // todo switch to iter
             let mut i = 0;
             while i < state.surfaces.len() {
                 if state.surfaces[i].name == name {
+                    if state.surfaces[i].lock_surface.is_some() {
+                        state.surfaces[i].lock_surface.as_ref().unwrap().destroy();
+                    }
                     state.surfaces.remove(i);
-                } else {
-                    i += 1;
+                    break;
                 }
+                i += 1;
             }
         }
     }
