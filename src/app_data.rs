@@ -2,14 +2,13 @@ use std::{os::fd::AsRawFd, fs::File};
 
 use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm, wl_seat, wl_keyboard, wl_pointer, wl_output, wl_surface, wl_subsurface, wl_buffer, wl_shm_pool}, Connection, Dispatch, QueueHandle, WEnum};
 use wayland_protocols::ext::session_lock::v1::client::{ext_session_lock_manager_v1, ext_session_lock_v1, ext_session_lock_surface_v1};
-use xkbcommon::xkb::{Keymap, Context, State};
 
 pub struct Surface {
     pub name: u32,
     pub output: wl_output::WlOutput,
     pub surface: Option<wl_surface::WlSurface>,
-    pub child: Option<wl_surface::WlSurface>,
-    pub subsurface: Option<wl_subsurface::WlSubsurface>,
+    //pub child: Option<wl_surface::WlSurface>,
+    //pub subsurface: Option<wl_subsurface::WlSubsurface>,
     pub lock_surface: Option<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1>,
 }
 
@@ -20,14 +19,14 @@ pub struct AppData {
     pub seat: Option<wl_seat::WlSeat>,
     pub seat_ptr: Option<wl_pointer::WlPointer>,
     pub seat_kb: Option<wl_keyboard::WlKeyboard>,
-    pub subcompositor: Option<wl_subcompositor::WlSubcompositor>,
+    //pub subcompositor: Option<wl_subcompositor::WlSubcompositor>,
     pub shm: Option<wl_shm::WlShm>,
     pub surfaces: Vec<Surface>,
     pub lock_mgr: Option<ext_session_lock_manager_v1::ExtSessionLockManagerV1>,
 
-    pub xkb_context: Context,
-    pub xkb_keymap: Option<Keymap>,
-    pub xkb_state: Option<State>,
+    //pub xkb_context: Context,
+    //pub xkb_keymap: Option<Keymap>,
+    //pub xkb_state: Option<State>,
 
     pub width: u32,
     pub height: u32,
@@ -59,9 +58,9 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
                     state.seat = Some(seat);
                 }
                 "wl_subcompositor" => {
-                    let subcompositor =
-                        registry.bind::<wl_subcompositor::WlSubcompositor, _, _>(name, version, qh, ());
-                    state.subcompositor = Some(subcompositor);
+                    //let subcompositor =
+                    registry.bind::<wl_subcompositor::WlSubcompositor, _, _>(name, version, qh, ());
+                    //state.subcompositor = Some(subcompositor);
                 }
                 "wl_shm" => {
                     let shm = registry.bind::<wl_shm::WlShm, _, _>(name, version, qh, ());
@@ -73,8 +72,8 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
                         output,
                         name,
                         surface: None,
-                        child: None,
-                        subsurface: None,
+                        //child: None,
+                        //subsurface: None,
                         lock_surface: None,
                     });
                     if state.running {

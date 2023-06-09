@@ -1,6 +1,5 @@
 use wayland_client::Connection;
 use wayland_protocols::ext::session_lock::v1::client::ext_session_lock_v1;
-use xkbcommon::xkb::Context;
 mod app_data;
 
 fn main() -> () {
@@ -20,14 +19,14 @@ fn main() -> () {
         seat: None,
         seat_ptr: None,
         seat_kb: None,
-        subcompositor: None,
+        //subcompositor: None,
         shm: None,
         surfaces: vec![],
         lock_mgr: None,
 
-        xkb_context: Context::new(0),
-        xkb_keymap: None,
-        xkb_state: None,
+        //xkb_context: Context::new(0),
+        //xkb_keymap: None,
+        //xkb_state: None,
 
         width: 0,
         height: 0,
@@ -53,7 +52,7 @@ fn main() -> () {
     app_data.running = true;
     event_queue.flush().unwrap();
 
-    create_susrfaces(&mut app_data, &qh, &lock);
+    create_surfaces(&mut app_data, &qh, &lock);
     event_queue.roundtrip(&mut app_data).unwrap();
 
     //println!("Sleeping...");
@@ -70,7 +69,7 @@ fn main() -> () {
     println!("Successfully unlocked!");
 }
 
-fn create_susrfaces(app_data: &mut app_data::AppData, qh: &wayland_client::QueueHandle<app_data::AppData>, lock: &ext_session_lock_v1::ExtSessionLockV1) {
+fn create_surfaces(app_data: &mut app_data::AppData, qh: &wayland_client::QueueHandle<app_data::AppData>, lock: &ext_session_lock_v1::ExtSessionLockV1) {
     for mut s in &mut app_data.surfaces {
         let surf = app_data.compositor.as_ref().unwrap().create_surface(qh, ());
         //let child = app_data.compositor.as_ref().unwrap().create_surface(qh, ());
