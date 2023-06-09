@@ -338,35 +338,37 @@ impl Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, ()> for AppD
             state.width = width;
             state.height = height;
             lock_surf.ack_configure(serial);
-
-            println!("Got ack: {}, {}", width, height);
-            for s in &state.surfaces {
-                if let Some(surf) = &s.surface {
-                    let mut file = tempfile::tempfile().unwrap();
-                    draw(&mut file, (width, height));
-                    let pool =
-                        state.shm.as_ref().unwrap().create_pool(file.as_raw_fd(), (width * height * 4) as i32, qh, ());
-                    let buffer = pool.create_buffer(
-                        0,
-                        width as i32,
-                        height as i32,
-                        (width * 4) as i32,
-                        wl_shm::Format::Argb8888,
-                        qh,
-                        (),
-                        );
-                    surf.attach(Some(&buffer), 0, 0);
-                    surf.commit();
-                }
-                //if let Some(child) = &s.child {
-                //    child.resize(width as i32, height as i32, 0, 0);
-                //}
-            }
+            setup_renderer(state, width as i32, height as i32, qh);
         }
     }
 }
 
-fn draw(tmp: &mut File, (buf_x, buf_y): (u32, u32)) {
+fn setup_renderer(state: &mut AppData, width: i32, height: i32, qh: &wayland_client::QueueHandle<AppData>) {
+    for s in &state.surfaces {
+        if let Some(surf) = &s.surface {
+            let mut file = tempfile::tempfile().unwrap();
+            draw(&mut file, (width, height));
+            let pool =
+                state.shm.as_ref().unwrap().create_pool(file.as_raw_fd(), width * height * 4, qh, ());
+            let buffer = pool.create_buffer(
+                0,
+                width,
+                height,
+                width * 4,
+                wl_shm::Format::Argb8888,
+                qh,
+                (),
+                );
+            surf.attach(Some(&buffer), 0, 0);
+            surf.commit();
+        }
+        //if let Some(child) = &s.child {
+        //    child.resize(width, height, 0, 0);
+        //}
+    }
+}
+
+fn draw(tmp: &mut File, (buf_x, buf_y): (i32, i32)) {
     use std::{cmp::min, io::Write};
     let mut buf = std::io::BufWriter::new(tmp);
     for y in 0..buf_y {
