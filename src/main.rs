@@ -1,5 +1,4 @@
-use wayland_client::{Connection, Proxy};
-use wayland_egl::WlEglSurface;
+use wayland_client::Connection;
 use wayland_protocols::ext::session_lock::v1::client::ext_session_lock_v1;
 use xkbcommon::xkb::Context;
 mod app_data;
@@ -60,11 +59,11 @@ fn main() -> () {
     //println!("Sleeping...");
     //thread::sleep(Duration::from_millis(4000));
 
-    //while app_data.locked {
-    //    if event_queue.blocking_dispatch(&mut app_data).is_err() {
-    //        break;
-    //    }
-    //}
+    while app_data.locked {
+        if event_queue.blocking_dispatch(&mut app_data).is_err() {
+            break;
+        }
+    }
 
     lock.unlock_and_destroy();
     event_queue.roundtrip(&mut app_data).unwrap();
@@ -79,9 +78,9 @@ fn create_susrfaces(app_data: &mut app_data::AppData, qh: &wayland_client::Queue
         //subsurface.set_sync();
         let lock_surf = lock.get_lock_surface(&surf, &s.output, qh, ());
         // correct size will be reset in lock surface handler
-        let surface = WlEglSurface::new(surf.id(), 1, 1).unwrap();
+        //let surface = WlEglSurface::new(surf.id(), 1, 1).unwrap();
         //let child = WlEglSurface::new(child.id(), 1, 1).unwrap();
-        s.surface = Some(surface);
+        s.surface = Some(surf);
         //s.child = Some(child);
         //s.subsurface = Some(subsurface);
         s.lock_surface = Some(lock_surf);
