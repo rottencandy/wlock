@@ -1,4 +1,5 @@
-use wayland_client::Connection;
+use wayland_client::{Connection, Proxy};
+use wayland_egl::WlEglSurface;
 use wayland_protocols::ext::session_lock::v1::client::ext_session_lock_v1;
 use xkbcommon::xkb::Context;
 mod app_data;
@@ -60,7 +61,9 @@ fn main() -> () {
     //thread::sleep(Duration::from_millis(4000));
 
     //while app_data.locked {
-    //    event_queue.blocking_dispatch(&mut app_data).unwrap();
+    //    if event_queue.blocking_dispatch(&mut app_data).is_err() {
+    //        break;
+    //    }
     //}
 
     lock.unlock_and_destroy();
@@ -71,13 +74,16 @@ fn main() -> () {
 fn create_susrfaces(app_data: &mut app_data::AppData, qh: &wayland_client::QueueHandle<app_data::AppData>, lock: &ext_session_lock_v1::ExtSessionLockV1) {
     for mut s in &mut app_data.surfaces {
         let surf = app_data.compositor.as_ref().unwrap().create_surface(qh, ());
-        let child = app_data.compositor.as_ref().unwrap().create_surface(qh, ());
-        let subsurface = app_data.subcompositor.as_ref().unwrap().get_subsurface(&child, &surf, qh, ());
-        subsurface.set_sync();
+        //let child = app_data.compositor.as_ref().unwrap().create_surface(qh, ());
+        //let subsurface = app_data.subcompositor.as_ref().unwrap().get_subsurface(&child, &surf, qh, ());
+        //subsurface.set_sync();
         let lock_surf = lock.get_lock_surface(&surf, &s.output, qh, ());
-        s.surface = Some(surf);
-        s.child = Some(child);
-        s.subsurface = Some(subsurface);
+        // correct size will be reset in lock surface handler
+        let surface = WlEglSurface::new(surf.id(), 1, 1).unwrap();
+        //let child = WlEglSurface::new(child.id(), 1, 1).unwrap();
+        s.surface = Some(surface);
+        //s.child = Some(child);
+        //s.subsurface = Some(subsurface);
         s.lock_surface = Some(lock_surf);
     }
 }

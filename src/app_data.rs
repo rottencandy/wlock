@@ -5,8 +5,8 @@ use xkbcommon::xkb::{Keymap, Context, State};
 pub struct Surface {
     pub name: u32,
     pub output: wl_output::WlOutput,
-    pub surface: Option<wl_surface::WlSurface>,
-    pub child: Option<wl_surface::WlSurface>,
+    pub surface: Option<wayland_egl::WlEglSurface>,
+    pub child: Option<wayland_egl::WlEglSurface>,
     pub subsurface: Option<wl_subsurface::WlSubsurface>,
     pub lock_surface: Option<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1>,
 }
@@ -179,13 +179,16 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for AppData {
 impl Dispatch<wl_pointer::WlPointer, ()> for AppData {
     fn event(
         _: &mut Self,
-        _: &wl_pointer::WlPointer,
-        _: wl_pointer::Event,
+        pointer: &wl_pointer::WlPointer,
+        event: wl_pointer::Event,
         _: &(),
         _: &Connection,
         _: &QueueHandle<Self>,
         ) {
-        // todo
+        if let wl_pointer::Event::Enter { serial, .. } = event {
+            // hide pointer
+            pointer.set_cursor(serial, None, 0, 0);
+        }
     }
 }
 
@@ -303,6 +306,15 @@ impl Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, ()> for AppD
             state.width = width;
             state.height = height;
             lock_surf.ack_configure(serial);
+
+        for s in &state.surfaces {
+            if let Some(surf) = &s.surface {
+                surf.resize(width as i32, height as i32, 0, 0);
+            }
+            if let Some(child) = &s.child {
+                child.resize(width as i32, height as i32, 0, 0);
+            }
+        }
         }
     }
 }

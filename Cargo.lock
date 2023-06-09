@@ -326,6 +326,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "wayland-egl"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1187695fe81c3153c3163f9d2953149f638c5d7dbc6fe988914ca3f4961e28ed"
+dependencies = [
+ "wayland-backend",
+ "wayland-sys",
+]
+
+[[package]]
 name = "wayland-protocols"
 version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -455,6 +465,7 @@ dependencies = [
  "tempfile",
  "users 0.11.0",
  "wayland-client",
+ "wayland-egl",
  "wayland-protocols",
  "xkbcommon",
 ]
