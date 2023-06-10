@@ -24,6 +24,7 @@ fn main() -> () {
         shm: None,
         surfaces: vec![],
         lock_mgr: None,
+        renderer: None,
 
         //xkb_context: Context::new(0),
         //xkb_keymap: None,

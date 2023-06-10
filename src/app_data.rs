@@ -23,6 +23,7 @@ pub struct AppData {
     pub shm: Option<wl_shm::WlShm>,
     pub surfaces: Vec<Surface>,
     pub lock_mgr: Option<ext_session_lock_manager_v1::ExtSessionLockManagerV1>,
+    pub renderer: Option<renderer::Renderer>,
 
     //pub xkb_context: Context,
     //pub xkb_keymap: Option<Keymap>,
@@ -159,6 +160,7 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for AppData {
             // todo use xkb keymap for correct code
             if key == 1 {
                 state.locked = false;
+                state.running = false;
                 println!("Esc key pressed!");
             }
         }
@@ -335,7 +337,14 @@ impl Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, ()> for AppD
             lock_surf.ack_configure(serial);
             for s in &state.surfaces {
                 if let Some(surf) = &s.surface {
-                    renderer::setup_renderer(&conn.display(), surf, width as i32, height as i32);
+                    //renderer::setup_renderer(&conn.display(), surf, width as i32, height as i32);
+                    if state.renderer.is_none() {
+                        let renderer = renderer::Renderer::new(&conn.display(), &surf, width as i32, height as i32);
+                        state.renderer = Some(renderer);
+                    } else {
+                        state.renderer.as_ref().unwrap().resize(width as i32, height as i32);
+                    }
+                    state.renderer.as_ref().unwrap().render();
                 }
             }
         }

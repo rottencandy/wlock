@@ -4,22 +4,54 @@ use gl::types::{GLenum, GLuint, GLint, GLchar, GLboolean, GLvoid};
 use khronos_egl as egl;
 use wayland_client::{protocol::{wl_display, wl_surface}, Proxy};
 
-pub fn setup_renderer(display: &wl_display::WlDisplay, surface: &wl_surface::WlSurface, width: i32, height: i32) {
-    // Create an EGL API instance.
-    let egl = egl::Instance::new(egl::Static);
-    egl.bind_api(egl::OPENGL_API).expect("unable to select OpenGL API");
-    gl::load_with(|name| egl.get_proc_address(name).unwrap() as *const std::ffi::c_void);
-
-    // Setup EGL.
-    let egl_display = setup_egl(&egl, display);
-    let (egl_context, egl_config) = create_context(&egl, egl_display);
-
-    // Create a surface.
-    // Note that it must be kept alive to the end of execution.
-    let _surface = setup_surface(&egl, surface, width, height, egl_display, egl_config, egl_context);
+pub struct Renderer {
+    egl: egl::Instance<egl::Static>,
+    wl_egl_surface: wayland_egl::WlEglSurface,
+    egl_surface: egl::Surface,
+    egl_display: egl::Display,
+    egl_context: egl::Context,
 }
 
-fn setup_surface(egl: &egl::Instance<egl::Static>, surface: &wl_surface::WlSurface, width: i32, height: i32, egl_display: egl::Display, egl_config: egl::Config, egl_context: egl::Context) {
+impl Renderer {
+    pub fn new(display: &wl_display::WlDisplay, surface: &wl_surface::WlSurface, width: i32, height: i32) -> Self {
+        // Create an EGL API instance.
+        let egl = egl::Instance::new(egl::Static);
+        egl.bind_api(egl::OPENGL_API).expect("unable to select OpenGL API");
+        gl::load_with(|name| egl.get_proc_address(name).unwrap() as *const std::ffi::c_void);
+
+        // Setup EGL.
+        let egl_display = setup_egl(&egl, display);
+        let (egl_context, egl_config) = create_context(&egl, egl_display);
+
+        // Create a surface.
+        // Note that it must be kept alive to the end of execution.
+        let (wl_egl_surface, egl_surface) = setup_surface(&egl, surface, width, height, egl_display, egl_config);
+
+        Renderer {
+            egl,
+            wl_egl_surface,
+            egl_surface,
+            egl_display,
+            egl_context,
+        }
+    }
+
+    pub fn render(&self) {
+        self.egl.make_current(self.egl_display, Some(self.egl_surface), Some(self.egl_surface), Some(self.egl_context))
+            .expect("unable to bind the context");
+
+        render();
+
+        self.egl.swap_buffers(self.egl_display, self.egl_surface)
+            .expect("unable to post the surface content");
+    }
+
+    pub fn resize(&self, width: i32, height: i32) {
+        self.wl_egl_surface.resize(width, height, 0, 0);
+    }
+}
+
+fn setup_surface(egl: &egl::Instance<egl::Static>, surface: &wl_surface::WlSurface, width: i32, height: i32, egl_display: egl::Display, egl_config: egl::Config) -> (wayland_egl::WlEglSurface, egl::Surface) {
     let wl_egl_surface = wayland_egl::WlEglSurface::new(surface.id(), width, height).expect("Unable to init wl_egl_surface");
 
     let egl_surface = unsafe {
@@ -32,13 +64,7 @@ fn setup_surface(egl: &egl::Instance<egl::Static>, surface: &wl_surface::WlSurfa
             .expect("unable to create an EGL surface")
     };
 
-    egl.make_current(egl_display, Some(egl_surface), Some(egl_surface), Some(egl_context))
-        .expect("unable to bind the context");
-
-    render();
-
-    egl.swap_buffers(egl_display, egl_surface)
-        .expect("unable to post the surface content");
+    (wl_egl_surface, egl_surface)
 }
 
 fn setup_egl(egl: &egl::Instance<egl::Static>, display: &wl_display::WlDisplay) -> egl::Display {
