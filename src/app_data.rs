@@ -1,4 +1,4 @@
-use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm, wl_seat, wl_keyboard, wl_pointer, wl_output, wl_surface, wl_subsurface, wl_buffer, wl_shm_pool}, Connection, Dispatch, QueueHandle, WEnum};
+use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm, wl_seat, wl_keyboard, wl_pointer, wl_output, wl_surface, wl_subsurface, wl_buffer, wl_shm_pool, wl_callback}, Connection, Dispatch, QueueHandle, WEnum};
 use wayland_protocols::ext::session_lock::v1::client::{ext_session_lock_manager_v1, ext_session_lock_v1, ext_session_lock_surface_v1};
 
 use crate::renderer;
@@ -161,7 +161,6 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for AppData {
             if key == 1 {
                 state.locked = false;
                 state.running = false;
-                println!("Esc key pressed!");
             }
         }
 
@@ -324,6 +323,21 @@ impl Dispatch<ext_session_lock_v1::ExtSessionLockV1, ()> for AppData {
     }
 }
 
+impl Dispatch<wl_callback::WlCallback, ()> for AppData {
+    fn event(
+        state: &mut Self,
+        _: &wl_callback::WlCallback,
+        event: wl_callback::Event,
+        _: &(),
+        _: &Connection,
+        qh: &QueueHandle<AppData>,
+        ) {
+        if let wl_callback::Event::Done { callback_data } = event {
+            state.render_and_schedule(qh, callback_data);
+        }
+    }
+}
+
 impl Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, ()> for AppData {
     fn event(
         state: &mut Self,
@@ -331,21 +345,32 @@ impl Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, ()> for AppD
         event: ext_session_lock_surface_v1::Event,
         _: &(),
         conn: &Connection,
-        _: &QueueHandle<AppData>,
+        qh: &QueueHandle<AppData>,
         ) {
         if let ext_session_lock_surface_v1::Event::Configure { serial, width, height } = event {
             lock_surf.ack_configure(serial);
             for s in &state.surfaces {
                 if let Some(surf) = &s.surface {
-                    //renderer::setup_renderer(&conn.display(), surf, width as i32, height as i32);
                     if state.renderer.is_none() {
                         let renderer = renderer::Renderer::new(&conn.display(), &surf, width as i32, height as i32);
                         state.renderer = Some(renderer);
                     } else {
-                        state.renderer.as_ref().unwrap().resize(width as i32, height as i32);
+                        println!("Resize event!");
+                        state.renderer.as_mut().unwrap().resize(width as i32, height as i32);
                     }
-                    state.renderer.as_ref().unwrap().render();
                 }
+            }
+            state.render_and_schedule(qh, 0);
+        }
+    }
+}
+
+impl AppData {
+    fn render_and_schedule(&self, qh: &QueueHandle<AppData>, dt: u32) {
+        for s in &self.surfaces {
+            if let Some(surf) = &s.surface {
+                self.renderer.as_ref().unwrap().render(dt);
+                surf.frame(qh, ());
             }
         }
     }

@@ -10,6 +10,8 @@ pub struct Renderer {
     egl_surface: egl::Surface,
     egl_display: egl::Display,
     egl_context: egl::Context,
+    width: i32,
+    height: i32,
 }
 
 impl Renderer {
@@ -34,6 +36,8 @@ impl Renderer {
             egl_surface,
             egl_display,
             egl_context,
+            width,
+            height,
         };
 
         renderer.make_current();
@@ -47,10 +51,10 @@ impl Renderer {
             .expect("unable to bind the context");
     }
 
-    pub fn render(&self) {
+    pub fn render(&self, dt: u32) {
         self.make_current();
 
-        render();
+        render(self.width, self.height);
 
         // By default, eglSwapBuffers blocks until we receive the next frame event.
         // This is undesirable since it makes it impossible to process other events
@@ -64,8 +68,10 @@ impl Renderer {
             .expect("unable to post the surface content");
     }
 
-    pub fn resize(&self, width: i32, height: i32) {
+    pub fn resize(&mut self, width: i32, height: i32) {
         self.wl_egl_surface.resize(width, height, 0, 0);
+        self.width = width;
+        self.height = height;
     }
 }
 
@@ -268,8 +274,9 @@ fn compile_program() {
     }
 }
 
-fn render() {
+fn render(width: i32, height: i32) {
     unsafe {
+        gl::Viewport(0, 0, width, height);
         gl::ClearColor(0., 0., 0., 1.);
         gl::Clear(gl::COLOR_BUFFER_BIT);
 
