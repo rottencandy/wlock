@@ -27,20 +27,38 @@ impl Renderer {
         // Note that it must be kept alive to the end of execution.
         let (wl_egl_surface, egl_surface) = setup_surface(&egl, surface, width, height, egl_display, egl_config);
 
-        Renderer {
+
+        let renderer = Renderer {
             egl,
             wl_egl_surface,
             egl_surface,
             egl_display,
             egl_context,
-        }
+        };
+
+        renderer.make_current();
+        compile_program();
+
+        renderer
+    }
+
+    fn make_current(&self) {
+        self.egl.make_current(self.egl_display, Some(self.egl_surface), Some(self.egl_surface), Some(self.egl_context))
+            .expect("unable to bind the context");
     }
 
     pub fn render(&self) {
-        self.egl.make_current(self.egl_display, Some(self.egl_surface), Some(self.egl_surface), Some(self.egl_context))
-            .expect("unable to bind the context");
+        self.make_current();
 
         render();
+
+        // By default, eglSwapBuffers blocks until we receive the next frame event.
+        // This is undesirable since it makes it impossible to process other events
+        // (such as input events) while waiting for the next frame event. Setting
+        // the swap interval to zero and managing frame events manually prevents
+        // this behavior.
+        self.egl.swap_interval(self.egl_display, 0)
+            .expect("unable to reset swap interval");
 
         self.egl.swap_buffers(self.egl_display, self.egl_surface)
             .expect("unable to post the surface content");
@@ -181,7 +199,7 @@ void main() {
 }
 \0";
 
-fn render() {
+fn compile_program() {
     unsafe {
         let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
         check_gl_errors();
@@ -247,8 +265,15 @@ fn render() {
             gl::STATIC_DRAW
             );
         check_gl_errors();
+    }
+}
+
+fn render() {
+    unsafe {
+        gl::ClearColor(0., 0., 0., 1.);
+        gl::Clear(gl::COLOR_BUFFER_BIT);
 
         gl::DrawElements(gl::TRIANGLE_FAN, 4, gl::UNSIGNED_INT, std::ptr::null());
-        check_gl_errors();
+        //check_gl_errors();
     }
 }
