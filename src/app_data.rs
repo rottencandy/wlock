@@ -1,7 +1,7 @@
 use wayland_client::{protocol::{wl_registry, wl_compositor, wl_subcompositor, wl_shm, wl_seat, wl_keyboard, wl_pointer, wl_output, wl_surface, wl_subsurface, wl_buffer, wl_shm_pool}, Connection, Dispatch, QueueHandle, WEnum};
 use wayland_protocols::ext::session_lock::v1::client::{ext_session_lock_manager_v1, ext_session_lock_v1, ext_session_lock_surface_v1};
 
-use crate::egl;
+use crate::renderer;
 
 pub struct Surface {
     pub name: u32,
@@ -27,9 +27,6 @@ pub struct AppData {
     //pub xkb_context: Context,
     //pub xkb_keymap: Option<Keymap>,
     //pub xkb_state: Option<State>,
-
-    pub width: u32,
-    pub height: u32,
 }
 
 impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
@@ -335,57 +332,12 @@ impl Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, ()> for AppD
         _: &QueueHandle<AppData>,
         ) {
         if let ext_session_lock_surface_v1::Event::Configure { serial, width, height } = event {
-            state.width = width;
-            state.height = height;
             lock_surf.ack_configure(serial);
             for s in &state.surfaces {
                 if let Some(surf) = &s.surface {
-                    egl::setup_renderer(&conn.display(), surf, width as i32, height as i32);
-                    surf.commit();
+                    renderer::setup_renderer(&conn.display(), surf, width as i32, height as i32);
                 }
             }
         }
     }
 }
-
-//fn setup_renderer(state: &mut AppData, width: i32, height: i32, qh: &wayland_client::QueueHandle<AppData>) {
-//    for s in &state.surfaces {
-//        if let Some(surf) = &s.surface {
-//            let mut file = tempfile::tempfile().unwrap();
-//            draw(&mut file, (width, height));
-//            let pool =
-//                state.shm.as_ref().unwrap().create_pool(file.as_raw_fd(), width * height * 4, qh, ());
-//            let buffer = pool.create_buffer(
-//                0,
-//                width,
-//                height,
-//                width * 4,
-//                wl_shm::Format::Argb8888,
-//                qh,
-//                (),
-//                );
-//            surf.attach(Some(&buffer), 0, 0);
-//            surf.commit();
-//        }
-//        //if let Some(child) = &s.child {
-//        //    child.resize(width, height, 0, 0);
-//        //}
-//    }
-//}
-
-//fn draw(tmp: &mut File, (buf_x, buf_y): (i32, i32)) {
-//    use std::{cmp::min, io::Write};
-//    let mut buf = std::io::BufWriter::new(tmp);
-//    for y in 0..buf_y {
-//        for x in 0..buf_x {
-//            let a = 0xFF;
-//            let r = min(((buf_x - x) * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
-//            let g = min((x * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
-//            let b = min(((buf_x - x) * 0xFF) / buf_x, (y * 0xFF) / buf_y);
-//
-//            let color = (a << 24) + (r << 16) + (g << 8) + b;
-//            buf.write_all(&color.to_ne_bytes()).unwrap();
-//        }
-//    }
-//    buf.flush().unwrap();
-//}

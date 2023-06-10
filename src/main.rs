@@ -1,7 +1,7 @@
 use wayland_client::Connection;
 use wayland_protocols::ext::session_lock::v1::client::ext_session_lock_v1;
 mod app_data;
-pub mod egl;
+pub mod renderer;
 
 fn main() -> () {
     let conn = Connection::connect_to_env().unwrap();
@@ -28,9 +28,6 @@ fn main() -> () {
         //xkb_context: Context::new(0),
         //xkb_keymap: None,
         //xkb_state: None,
-
-        width: 0,
-        height: 0,
     };
     event_queue.roundtrip(&mut app_data).unwrap();
 

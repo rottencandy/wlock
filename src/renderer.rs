@@ -6,9 +6,7 @@ use wayland_client::{protocol::{wl_display, wl_surface}, Proxy};
 
 pub fn setup_renderer(display: &wl_display::WlDisplay, surface: &wl_surface::WlSurface, width: i32, height: i32) {
     // Create an EGL API instance.
-	// The `egl::Static` API implementation is only available when the `static` feature is enabled.
-	let egl = egl::Instance::new(egl::Static);
-    // Setup Open GL.
+    let egl = egl::Instance::new(egl::Static);
     egl.bind_api(egl::OPENGL_API).expect("unable to select OpenGL API");
     gl::load_with(|name| egl.get_proc_address(name).unwrap() as *const std::ffi::c_void);
 
@@ -131,21 +129,21 @@ unsafe fn check_shader_status(shader: GLuint) {
 }
 
 const VERTEX: &'static [GLint; 8] = &[
-	-1, -1,
-	1, -1,
-	1, 1,
-	-1, 1
+    -1, -1,
+    1, -1,
+    1, 1,
+    -1, 1
 ];
 
 const INDEXES: &'static [GLuint; 4] = &[
-	0, 1, 2, 3
+    0, 1, 2, 3
 ];
 
 const VERTEX_SHADER: &[u8] = b"#version 400
 in vec2 position;
 
 void main() {
-	gl_Position = vec4(position, 0.0f, 1.0f);
+    gl_Position = vec4(position, 0.0f, 1.0f);
 }
 \0";
 
@@ -153,78 +151,78 @@ const FRAGMENT_SHADER: &[u8] = b"#version 400
 out vec4 color;
 
 void main() {
-	color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
 }
 \0";
 
 fn render() {
-	unsafe {
-		let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
-		check_gl_errors();
-		let src = CStr::from_bytes_with_nul_unchecked(VERTEX_SHADER).as_ptr();
-		gl::ShaderSource(vertex_shader, 1, (&[src]).as_ptr(), ptr::null());
-		check_gl_errors();
-		gl::CompileShader(vertex_shader);
-		check_shader_status(vertex_shader);
+    unsafe {
+        let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
+        check_gl_errors();
+        let src = CStr::from_bytes_with_nul_unchecked(VERTEX_SHADER).as_ptr();
+        gl::ShaderSource(vertex_shader, 1, (&[src]).as_ptr(), ptr::null());
+        check_gl_errors();
+        gl::CompileShader(vertex_shader);
+        check_shader_status(vertex_shader);
 
-		let fragment_shader = gl::CreateShader(gl::FRAGMENT_SHADER);
-		check_gl_errors();
-		let src = CStr::from_bytes_with_nul_unchecked(FRAGMENT_SHADER).as_ptr();
-		gl::ShaderSource(fragment_shader, 1, (&[src]).as_ptr(), ptr::null());
-		check_gl_errors();
-		gl::CompileShader(fragment_shader);
-		check_shader_status(fragment_shader);
+        let fragment_shader = gl::CreateShader(gl::FRAGMENT_SHADER);
+        check_gl_errors();
+        let src = CStr::from_bytes_with_nul_unchecked(FRAGMENT_SHADER).as_ptr();
+        gl::ShaderSource(fragment_shader, 1, (&[src]).as_ptr(), ptr::null());
+        check_gl_errors();
+        gl::CompileShader(fragment_shader);
+        check_shader_status(fragment_shader);
 
-		let program = gl::CreateProgram();
-		check_gl_errors();
-		gl::AttachShader(program, vertex_shader);
-		check_gl_errors();
-		gl::AttachShader(program, fragment_shader);
-		check_gl_errors();
-		gl::LinkProgram(program);
-		check_gl_errors();
-		gl::UseProgram(program);
-		check_gl_errors();
+        let program = gl::CreateProgram();
+        check_gl_errors();
+        gl::AttachShader(program, vertex_shader);
+        check_gl_errors();
+        gl::AttachShader(program, fragment_shader);
+        check_gl_errors();
+        gl::LinkProgram(program);
+        check_gl_errors();
+        gl::UseProgram(program);
+        check_gl_errors();
 
-		let mut buffer = 0;
-		gl::GenBuffers(1, &mut buffer);
-		check_gl_errors();
-		gl::BindBuffer(gl::ARRAY_BUFFER, buffer);
-		check_gl_errors();
-		gl::BufferData(
-			gl::ARRAY_BUFFER,
-			8 * 4,
-			VERTEX.as_ptr() as *const std::ffi::c_void,
-			gl::STATIC_DRAW
-		);
-		check_gl_errors();
+        let mut buffer = 0;
+        gl::GenBuffers(1, &mut buffer);
+        check_gl_errors();
+        gl::BindBuffer(gl::ARRAY_BUFFER, buffer);
+        check_gl_errors();
+        gl::BufferData(
+            gl::ARRAY_BUFFER,
+            8 * 4,
+            VERTEX.as_ptr() as *const std::ffi::c_void,
+            gl::STATIC_DRAW
+            );
+        check_gl_errors();
 
-		let mut vertex_input = 0;
-		gl::GenVertexArrays(1, &mut vertex_input);
-		check_gl_errors();
-		gl::BindVertexArray(vertex_input);
-		check_gl_errors();
-		gl::EnableVertexAttribArray(0);
-		check_gl_errors();
-		gl::VertexAttribPointer(
-			0, 2, gl::INT, gl::FALSE as GLboolean, 0, 0 as *const GLvoid
-		);
-		check_gl_errors();
+        let mut vertex_input = 0;
+        gl::GenVertexArrays(1, &mut vertex_input);
+        check_gl_errors();
+        gl::BindVertexArray(vertex_input);
+        check_gl_errors();
+        gl::EnableVertexAttribArray(0);
+        check_gl_errors();
+        gl::VertexAttribPointer(
+            0, 2, gl::INT, gl::FALSE as GLboolean, 0, 0 as *const GLvoid
+            );
+        check_gl_errors();
 
-		let mut indexes = 0;
-		gl::GenBuffers(1, &mut indexes);
-		check_gl_errors();
-		gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, indexes);
-		check_gl_errors();
-		gl::BufferData(
-			gl::ELEMENT_ARRAY_BUFFER,
-			4 * 4,
-			INDEXES.as_ptr() as *const std::ffi::c_void,
-			gl::STATIC_DRAW
-		);
-		check_gl_errors();
+        let mut indexes = 0;
+        gl::GenBuffers(1, &mut indexes);
+        check_gl_errors();
+        gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, indexes);
+        check_gl_errors();
+        gl::BufferData(
+            gl::ELEMENT_ARRAY_BUFFER,
+            4 * 4,
+            INDEXES.as_ptr() as *const std::ffi::c_void,
+            gl::STATIC_DRAW
+            );
+        check_gl_errors();
 
-		gl::DrawElements(gl::TRIANGLE_FAN, 4, gl::UNSIGNED_INT, std::ptr::null());
-		check_gl_errors();
-	}
+        gl::DrawElements(gl::TRIANGLE_FAN, 4, gl::UNSIGNED_INT, std::ptr::null());
+        check_gl_errors();
+    }
 }
