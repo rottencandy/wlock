@@ -199,20 +199,26 @@ in vec2 position;
 
 uniform vec2 u_res;
 
+out vec2 fragPos;
+
 void main() {
     gl_Position = vec4(position, 0.0f, 1.0f);
+    fragPos = position;
+    fragPos.x = position.x * u_res.x / u_res.y;
 }
 \0";
 
 const FRAGMENT_SHADER: &[u8] = b"#version 400
+in vec2 fragPos;
+
 out vec4 color;
 
 void main() {
-    color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    color = vec4(fragPos.r, 0.0f, 0.0f, 1.0f);
 }
 \0";
 
-fn compile_program() {
+fn compile_program() -> GLint {
     unsafe {
         let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
         check_gl_errors();
