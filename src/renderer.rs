@@ -12,6 +12,8 @@ pub struct Renderer {
     egl_context: egl::Context,
     width: i32,
     height: i32,
+
+    u_res_pos: GLint,
 }
 
 impl Renderer {
@@ -30,7 +32,7 @@ impl Renderer {
         let (wl_egl_surface, egl_surface) = setup_surface(&egl, surface, width, height, egl_display, egl_config);
 
 
-        let renderer = Renderer {
+        let mut renderer = Renderer {
             egl,
             wl_egl_surface,
             egl_surface,
@@ -38,10 +40,13 @@ impl Renderer {
             egl_context,
             width,
             height,
+
+            u_res_pos: -1,
         };
 
         renderer.make_current();
-        compile_program();
+        let uniforms = compile_program();
+        renderer.u_res_pos = uniforms;
 
         renderer
     }
@@ -54,7 +59,7 @@ impl Renderer {
     pub fn render(&self, dt: u32) {
         self.make_current();
 
-        render(self.width, self.height);
+        render(self.width, self.height, self.u_res_pos);
 
         // By default, eglSwapBuffers blocks until we receive the next frame event.
         // This is undesirable since it makes it impossible to process other events
@@ -192,6 +197,8 @@ const INDEXES: &'static [GLuint; 4] = &[
 const VERTEX_SHADER: &[u8] = b"#version 400
 in vec2 position;
 
+uniform vec2 u_res;
+
 void main() {
     gl_Position = vec4(position, 0.0f, 1.0f);
 }
@@ -271,14 +278,20 @@ fn compile_program() {
             gl::STATIC_DRAW
             );
         check_gl_errors();
+
+        let u_res_pos = gl::GetUniformLocation(program, "u_res".as_ptr().cast());
+
+        u_res_pos
     }
 }
 
-fn render(width: i32, height: i32) {
+fn render(width: i32, height: i32, u_res_pos: GLint) {
     unsafe {
         gl::Viewport(0, 0, width, height);
         gl::ClearColor(0., 0., 0., 1.);
         gl::Clear(gl::COLOR_BUFFER_BIT);
+
+        gl::Uniform2f(u_res_pos, width as f32, height as f32);
 
         gl::DrawElements(gl::TRIANGLE_FAN, 4, gl::UNSIGNED_INT, std::ptr::null());
         //check_gl_errors();
