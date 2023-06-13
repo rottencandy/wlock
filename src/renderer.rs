@@ -205,15 +205,15 @@ const VERTEX_SHADER: &[u8] = b"#version 400
 in vec2 position;
 
 uniform float iTime;
-uniform vec3 iRes;
-uniform vec3 iDate;
+uniform vec3 iResolution;
+uniform float iDate;
 
 out vec2 fragPos;
 
 void main() {
     gl_Position = vec4(position, 0.0f, 1.0f);
-    fragPos = position;
-    fragPos.x *= iRes.z;
+    fragPos = position * .5 + .5;
+    fragPos *= iResolution.xy;
 }
 \0";
 
@@ -221,13 +221,27 @@ const FRAGMENT_SHADER: &[u8] = b"#version 400
 in vec2 fragPos;
 
 uniform float iTime;
-uniform vec3 iRes;
-uniform vec3 iDate;
+uniform vec3 iResolution;
+uniform float iDate;
 
 out vec4 color;
 
+/// Source: https://www.shadertoy.com/view/ll3yWj
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    // Normalized pixel coordinates (from 0 to 1)
+    vec2 uv = fragCoord/iResolution.xy;
+
+    // Time varying pixel color
+    vec3 col = 0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4));
+
+    // Output to screen
+    fragColor = vec4(col,1.0);
+}
+/// shader ends here
 void main() {
-    color = vec4(fragPos.xy, 0.0f, 1.0f);
+    color = vec4(1.0f);
+    mainImage(color, fragPos);
 }
 \0";
 
@@ -299,14 +313,14 @@ fn compile_program() -> (GLint, GLint, GLint) {
         check_gl_errors();
 
         let u_time = get_uniform_loc(program, "iTime");
-        let u_res = get_uniform_loc(program, "iRes");
+        let u_res = get_uniform_loc(program, "iResolution");
         let u_hms = get_uniform_loc(program, "iDate");
 
         (u_time, u_res, u_hms)
     }
 }
 
-fn get_uniform_loc(program: GLuint, name: &str) -> GLint {
+unsafe fn get_uniform_loc(program: GLuint, name: &str) -> GLint {
     unsafe {
         let c_str = CString::new(name).expect("Unable to cast uniform str to CStr");
         gl::GetUniformLocation(program, c_str.as_ptr().cast())
@@ -320,9 +334,9 @@ fn render(width: i32, height: i32, u_time: GLint, u_res: GLint, u_hms: GLint, dt
         gl::ClearColor(0., 0., 0., 1.);
         gl::Clear(gl::COLOR_BUFFER_BIT);
 
-        gl::Uniform1f(u_time, dt as f32);
+        gl::Uniform1f(u_time, dt as f32 / 1000.);
         gl::Uniform3f(u_res, width as f32, height as f32, width as f32 / height as f32);
-        gl::Uniform3f(u_hms, utc.hour() as f32, utc.minute() as f32, utc.second() as f32);
+        gl::Uniform1f(u_hms, utc.hour() as f32 * 60. * 60. + utc.minute() as f32 * 60. + utc.second() as f32);
 
         gl::DrawElements(gl::TRIANGLE_FAN, 4, gl::UNSIGNED_INT, std::ptr::null());
         //check_gl_errors();
