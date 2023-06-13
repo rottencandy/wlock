@@ -1,5 +1,6 @@
-use std::{ptr, ffi::CStr};
+use std::{ptr, ffi::{CStr, CString}};
 
+use chrono::{Utc, Timelike};
 use gl::types::{GLenum, GLuint, GLint, GLchar, GLboolean, GLvoid};
 use khronos_egl as egl;
 use wayland_client::{protocol::{wl_display, wl_surface}, Proxy};
@@ -13,7 +14,9 @@ pub struct Renderer {
     width: i32,
     height: i32,
 
-    u_res_pos: GLint,
+    u_time: GLint,
+    u_res: GLint,
+    u_hms: GLint,
 }
 
 impl Renderer {
@@ -41,12 +44,16 @@ impl Renderer {
             width,
             height,
 
-            u_res_pos: -1,
+            u_time: -1,
+            u_res: -1,
+            u_hms: -1,
         };
 
         renderer.make_current();
         let uniforms = compile_program();
-        renderer.u_res_pos = uniforms;
+        renderer.u_time = uniforms.0;
+        renderer.u_res = uniforms.1;
+        renderer.u_hms = uniforms.2;
 
         renderer
     }
@@ -59,7 +66,7 @@ impl Renderer {
     pub fn render(&self, dt: u32) {
         self.make_current();
 
-        render(self.width, self.height, self.u_res_pos);
+        render(self.width, self.height, self.u_time, self.u_res, self.u_hms, dt);
 
         // By default, eglSwapBuffers blocks until we receive the next frame event.
         // This is undesirable since it makes it impossible to process other events
@@ -197,28 +204,34 @@ const INDEXES: &'static [GLuint; 4] = &[
 const VERTEX_SHADER: &[u8] = b"#version 400
 in vec2 position;
 
-uniform vec2 u_res;
+uniform float iTime;
+uniform vec3 iRes;
+uniform vec3 iDate;
 
 out vec2 fragPos;
 
 void main() {
     gl_Position = vec4(position, 0.0f, 1.0f);
     fragPos = position;
-    fragPos.x = position.x * u_res.x / u_res.y;
+    fragPos.x *= iRes.z;
 }
 \0";
 
 const FRAGMENT_SHADER: &[u8] = b"#version 400
 in vec2 fragPos;
 
+uniform float iTime;
+uniform vec3 iRes;
+uniform vec3 iDate;
+
 out vec4 color;
 
 void main() {
-    color = vec4(fragPos.r, 0.0f, 0.0f, 1.0f);
+    color = vec4(fragPos.xy, 0.0f, 1.0f);
 }
 \0";
 
-fn compile_program() -> GLint {
+fn compile_program() -> (GLint, GLint, GLint) {
     unsafe {
         let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
         check_gl_errors();
@@ -285,19 +298,31 @@ fn compile_program() -> GLint {
             );
         check_gl_errors();
 
-        let u_res_pos = gl::GetUniformLocation(program, "u_res".as_ptr().cast());
+        let u_time = get_uniform_loc(program, "iTime");
+        let u_res = get_uniform_loc(program, "iRes");
+        let u_hms = get_uniform_loc(program, "iDate");
 
-        u_res_pos
+        (u_time, u_res, u_hms)
     }
 }
 
-fn render(width: i32, height: i32, u_res_pos: GLint) {
+fn get_uniform_loc(program: GLuint, name: &str) -> GLint {
+    unsafe {
+        let c_str = CString::new(name).expect("Unable to cast uniform str to CStr");
+        gl::GetUniformLocation(program, c_str.as_ptr().cast())
+    }
+}
+
+fn render(width: i32, height: i32, u_time: GLint, u_res: GLint, u_hms: GLint, dt: u32) {
+    let utc = Utc::now();
     unsafe {
         gl::Viewport(0, 0, width, height);
         gl::ClearColor(0., 0., 0., 1.);
         gl::Clear(gl::COLOR_BUFFER_BIT);
 
-        gl::Uniform2f(u_res_pos, width as f32, height as f32);
+        gl::Uniform1f(u_time, dt as f32);
+        gl::Uniform3f(u_res, width as f32, height as f32, width as f32 / height as f32);
+        gl::Uniform3f(u_hms, utc.hour() as f32, utc.minute() as f32, utc.second() as f32);
 
         gl::DrawElements(gl::TRIANGLE_FAN, 4, gl::UNSIGNED_INT, std::ptr::null());
         //check_gl_errors();

@@ -355,7 +355,6 @@ impl Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, ()> for AppD
                         let renderer = renderer::Renderer::new(&conn.display(), &surf, width as i32, height as i32);
                         state.renderer = Some(renderer);
                     } else {
-                        println!("Resize event!");
                         state.renderer.as_mut().unwrap().resize(width as i32, height as i32);
                     }
                 }
