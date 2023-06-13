@@ -1,6 +1,6 @@
 use std::{ptr, ffi::{CStr, CString}};
 
-use chrono::{Utc, Timelike};
+use chrono::{Local, Timelike};
 use gl::types::{GLenum, GLuint, GLint, GLchar, GLboolean, GLvoid};
 use khronos_egl as egl;
 use wayland_client::{protocol::{wl_display, wl_surface}, Proxy};
@@ -328,7 +328,7 @@ unsafe fn get_uniform_loc(program: GLuint, name: &str) -> GLint {
 }
 
 fn render(width: i32, height: i32, u_time: GLint, u_res: GLint, u_hms: GLint, dt: u32) {
-    let utc = Utc::now();
+    let utc = Local::now();
     unsafe {
         gl::Viewport(0, 0, width, height);
         gl::ClearColor(0., 0., 0., 1.);
@@ -336,7 +336,10 @@ fn render(width: i32, height: i32, u_time: GLint, u_res: GLint, u_hms: GLint, dt
 
         gl::Uniform1f(u_time, dt as f32 / 1000.);
         gl::Uniform3f(u_res, width as f32, height as f32, width as f32 / height as f32);
-        gl::Uniform1f(u_hms, utc.hour() as f32 * 60. * 60. + utc.minute() as f32 * 60. + utc.second() as f32);
+        gl::Uniform1f(u_hms,
+                      (utc.hour12().1 as f32) * 60. * 60. +
+                      (utc.minute() as f32) * 60. +
+                      utc.second() as f32);
 
         gl::DrawElements(gl::TRIANGLE_FAN, 4, gl::UNSIGNED_INT, std::ptr::null());
         //check_gl_errors();
