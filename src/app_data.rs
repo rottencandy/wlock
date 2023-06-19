@@ -359,13 +359,16 @@ impl Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, ()> for AppD
                     }
                 }
             }
+            // this is required since first surface commit is used to enable lock surface
+            // todo: maybe don't schedule this time since we're doing it anyway in main loop?
+            // and this schedule doesn't seem to work anyway for some reason
             state.render_and_schedule(qh, 0);
         }
     }
 }
 
 impl AppData {
-    fn render_and_schedule(&self, qh: &QueueHandle<AppData>, dt: u32) {
+    pub fn render_and_schedule(&self, qh: &QueueHandle<AppData>, dt: u32) {
         for s in &self.surfaces {
             if let Some(surf) = &s.surface {
                 self.renderer.as_ref().unwrap().render(dt);

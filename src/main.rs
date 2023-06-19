@@ -54,6 +54,8 @@ fn main() -> () {
     create_surfaces(&mut app_data, &qh, &lock);
     event_queue.roundtrip(&mut app_data).unwrap();
 
+    app_data.render_and_schedule(&qh, 0);
+
     //println!("Sleeping...");
     //thread::sleep(Duration::from_millis(4000));
 
